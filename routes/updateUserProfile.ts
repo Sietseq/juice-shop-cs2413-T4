@@ -37,7 +37,7 @@ export function updateUserProfile () {
 
       const savedUser = await user.update({ username: req.body.username })
       const userWithStatus = utils.queryResultToJson(savedUser)
-      const updatedToken = security.authorize(userWithStatus)
+      const updatedToken = await security.authorizeForUser(savedUser, userWithStatus, security.decode(req.cookies.token)?.sessionVersion ?? 0)
       security.authenticatedUsers.put(updatedToken, userWithStatus)
       res.cookie('token', updatedToken)
       res.location(process.env.BASE_PATH + '/profile')

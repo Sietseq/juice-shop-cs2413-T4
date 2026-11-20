@@ -55,8 +55,12 @@ export class UserService {
     passwords.new + '&repeat=' + passwords.repeat).pipe(map((response: any) => response.user), catchError((err) => { throw err.error }))
   }
 
+  requestPasswordReset (email: string) {
+    return this.http.post<{ message: string }>(this.hostServer + '/rest/user/request-password-reset', { email })
+  }
+
   resetPassword (params: any) {
-    return this.http.post(this.hostServer + '/rest/user/reset-password', params).pipe(map((response: any) => response.user), catchError((err) => { throw err }))
+    return this.http.post(this.hostServer + '/rest/user/reset-password', params).pipe(map((response: any) => response.message), catchError((err) => { throw err }))
   }
 
   whoAmI (fields?: string[]) {

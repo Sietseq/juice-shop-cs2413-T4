@@ -52,6 +52,18 @@ export const cutOffPoisonNullByte = (str: string) => {
 export const isAuthorized = () => expressJwt(({ secret: publicKey }) as any)
 export const denyAll = () => expressJwt({ secret: '' + Math.random() } as any)
 export const authorize = (user = {}) => jwt.sign(user, privateKey, { expiresIn: '6h', algorithm: 'RS256' })
+export const authorizeForUser = async (user: Pick<UserModel, 'id' | 'password'>, payload: Record<string, unknown>, expectedVersion?: number) =>
+  await (await import('./userSessions')).authorizeForUser(user, payload, expectedVersion)
+
+export const readUserToken = async (token: unknown) => await (await import('./userSessions')).readUserToken(token)
+
+export function invalidateUserSessions (userId: number) {
+  for (const [token, user] of Object.entries(authenticatedUsers.tokenMap)) {
+    if (user.data.id === userId) delete authenticatedUsers.tokenMap[token]
+  }
+  delete authenticatedUsers.idMap[userId]
+}
+
 export const verify = (token: string) => token ? (jws.verify as ((token: string, secret: string) => boolean))(token, publicKey) : false
 export const decode = (token: string) => { return jws.decode(token)?.payload }
 
@@ -183,15 +195,20 @@ export const appendUserId = () => {
   }
 }
 
-export const updateAuthenticatedUsers = () => (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.token || utils.jwtFrom(req)
-  if (token && authenticatedUsers.get(token) === undefined) {
-    jwt.verify(token, publicKey, (err: Error | null, decoded: any) => {
-      if (err === null && decoded?.data !== undefined) {
-        authenticatedUsers.put(token, decoded)
-        res.cookie('token', token)
-      }
-    })
+export const updateAuthenticatedUsers = () => utils.asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const tokens = [utils.jwtFrom(req), req.cookies.token].filter((token): token is string => typeof token === 'string' && token.length > 0)
+  for (const token of new Set(tokens)) {
+    const user = await readUserToken(token)
+    if (!user) {
+      delete authenticatedUsers.tokenMap[token]
+      res.clearCookie('token')
+      res.status(401).send()
+      return
+    }
+    if (user.data && authenticatedUsers.get(token) === undefined) {
+      authenticatedUsers.put(token, user as ResponseWithUser)
+      res.cookie('token', token)
+    }
   }
   next()
-}
+})
