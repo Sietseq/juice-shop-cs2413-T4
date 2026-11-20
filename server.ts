@@ -642,7 +642,7 @@ function configureApp (app: ReturnType<typeof express>, seq: typeof sequelize) {
   })
 app.use('/rest/user/login', loginLimiter)
   app.post('/rest/user/login', login())
-  app.get('/rest/user/change-password', utils.asyncHandler(changePassword()))
+  app.get('/rest/user/change-password', security.isAuthorized(), utils.asyncHandler(changePassword()))
   app.post('/rest/user/reset-password', utils.asyncHandler(resetPassword()))
   app.get('/rest/user/security-question', utils.asyncHandler(securityQuestion()))
   app.get('/rest/user/whoami', utils.asyncHandler(retrieveLoggedInUser()))
