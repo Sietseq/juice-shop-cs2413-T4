@@ -19,9 +19,9 @@ export function login () {
   function afterLogin (user: User, res: Response, next: NextFunction) {
     verifyPostLoginChallenges(user) // vuln-code-snippet hide-line
     BasketModel.findOrCreate({ where: { UserId: user.id } })
-      .then(([basket]: [BasketModel, boolean]) => {
+      .then(async ([basket]: [BasketModel, boolean]) => {
         const authenticatedUser = { data: user, bid: basket.id } // keep track of original basket
-        const token = security.authorize(authenticatedUser)
+        const token = await security.authorizeForUser(user, authenticatedUser)
         security.authenticatedUsers.put(token, authenticatedUser)
         res.json({ authentication: { token, bid: basket.id, umail: user.email } })
       }).catch((error: Error) => {
@@ -31,17 +31,21 @@ export function login () {
 
   return (req: Request, res: Response, next: NextFunction) => {
     verifyPreLoginChallenges(req) // vuln-code-snippet hide-line
-    models.sequelize.query('SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL',
-  { bind: [ req.body.email, security.hash(req.body.password) ], model: UserModel, plain: true })
-   // models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' 
-   // AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
-      .then((authenticatedUser) => { // vuln-code-snippet neutral-line loginAdminChallenge loginBenderChallenge loginJimChallenge
+    models.sequelize.query(
+        'SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL',
+        {
+          bind: [req.body.email || '', security.hash(req.body.password || '')],
+          model: UserModel,
+          plain: true
+        }
+      )
+      .then(async (authenticatedUser) => {
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
           res.status(401).json({
             status: 'totp_token_required',
             data: {
-              tmpToken: security.authorize({
+              tmpToken: await security.authorizeForUser(user.data, {
                 userId: user.data.id,
                 type: 'password_valid_needs_second_factor_token'
               })

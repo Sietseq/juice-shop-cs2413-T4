@@ -17,7 +17,8 @@ export async function verify (req: Request, res: Response) {
   const { tmpToken, totpToken } = req.body
 
   try {
-    const { userId, type } = security.verify(tmpToken) && security.decode(tmpToken)
+    const claims = await security.readUserToken(tmpToken)
+    const { userId, type } = claims ?? {}
 
     if (type !== 'password_valid_needs_second_factor_token') {
       throw new Error('Invalid token type')
@@ -39,7 +40,7 @@ export async function verify (req: Request, res: Response) {
 
     const [basket] = await BasketModel.findOrCreate({ where: { UserId: userId } })
 
-    const token = security.authorize(plainUser)
+    const token = await security.authorizeForUser(user, plainUser, claims?.sessionVersion ?? 0)
     // @ts-expect-error FIXME set new property for original basket
     plainUser.bid = basket.id // keep track of original basket for challenge solution check
     security.authenticatedUsers.put(token, plainUser)

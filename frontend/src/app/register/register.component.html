@@ -65,40 +65,6 @@
         [minCharsCriteriaMsg]="'MIN_CHARS_CRITERIA_MSG' | translate:{value: 8}">
       </app-password-strength-info>
       }
-      <div class="security-container">
-
-        <mat-form-field color="tertiary" appearance="outline">
-          <mat-label>
-            {{'LABEL_SECURITY_QUESTION' | translate}}
-          </mat-label>
-          <mat-select id="securityQuestionControl" [formField]="registerForm.securityQuestion" placeholder=""
-            (focus)="error.set(null)" aria-label="Selection list for the security question">
-            @for (question of securityQuestions(); track question.id) {
-            <mat-option [value]="question.id" class="mat-body-medium">
-              {{question.question}}
-            </mat-option>
-            }
-          </mat-select>
-          <mat-hint>
-            <i class="fas fa-exclamation-circle"></i>
-            <em class="hint-spacing">{{'CANNOT_BE_CHANGED_LATER' | translate}}</em>
-          </mat-hint>
-          @if (registerForm.securityQuestion().getError('required')) {
-          <mat-error>{{'MANDATORY_SECURITY_QUESTION' | translate}}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" color="tertiary">
-          <mat-label>{{'SECURITY_ANSWER' | translate}}</mat-label>
-          <input id="securityAnswerControl" [formField]="registerForm.securityAnswer" (focus)="error.set(null)"
-            type="text" matInput [placeholder]="'SECURITY_ANSWER_PLACEHOLDER' | translate"
-            aria-label="Field for the answer to the security question">
-          @if (registerForm.securityAnswer().getError('required')) {
-          <mat-error>{{'MANDATORY_SECURITY_ANSWER' | translate}}</mat-error>
-          }
-        </mat-form-field>
-      </div>
-
       <button type="submit" id="registerButton" mat-raised-button color="primary" [disabled]="registerForm().invalid()"
         aria-label="Button to complete the registration">
         <mat-icon>person_add</mat-icon>
