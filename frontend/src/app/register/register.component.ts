@@ -3,11 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { SecurityAnswerService } from '../Services/security-answer.service'
 import { UserService } from '../Services/user.service'
 import { FormField, email, form, maxLength, minLength, required, submit, validate } from '@angular/forms/signals'
-import { Component, inject, signal, ChangeDetectionStrategy, type OnInit } from '@angular/core'
-import { SecurityQuestionService } from '../Services/security-question.service'
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core'
 import { Router, RouterLink } from '@angular/router'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { MatSnackBar } from '@angular/material/snack-bar'
@@ -15,10 +13,7 @@ import { MatSnackBar } from '@angular/material/snack-bar'
 import { faExclamationCircle, faUserPlus } from '@fortawesome/free-solid-svg-icons'
 import { SnackBarHelperService } from '../Services/snack-bar-helper.service'
 import { TranslateService, TranslateModule } from '@ngx-translate/core'
-import { type SecurityQuestion } from '../Models/securityQuestion.model'
 import { MatButtonModule } from '@angular/material/button'
-import { MatOption } from '@angular/material/core'
-import { MatSelect } from '@angular/material/select'
 import { PasswordStrengthComponent } from '../password-strength/password-strength.component'
 import { PasswordStrengthInfoComponent } from '../password-strength-info/password-strength-info.component'
 import { MatSlideToggle } from '@angular/material/slide-toggle'
@@ -38,12 +33,10 @@ library.add(faUserPlus, faExclamationCircle)
   selector: 'app-register',
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss'],
-  imports: [MatCardModule, TranslateModule, MatFormFieldModule, MatLabel, MatInputModule, FormsModule, FormField, MatError, MatHint, MatSlideToggle, PasswordStrengthComponent, PasswordStrengthInfoComponent, MatSelect, MatOption, MatButtonModule, RouterLink, MatIconModule]
+  imports: [MatCardModule, TranslateModule, MatFormFieldModule, MatLabel, MatInputModule, FormsModule, FormField, MatError, MatHint, MatSlideToggle, PasswordStrengthComponent, PasswordStrengthInfoComponent, MatButtonModule, RouterLink, MatIconModule]
 })
-export class RegisterComponent implements OnInit {
-  private readonly securityQuestionService = inject(SecurityQuestionService)
+export class RegisterComponent {
   private readonly userService = inject(UserService)
-  private readonly securityAnswerService = inject(SecurityAnswerService)
   private readonly router = inject(Router)
   private readonly translateService = inject(TranslateService)
   private readonly snackBar = inject(MatSnackBar)
@@ -52,9 +45,7 @@ export class RegisterComponent implements OnInit {
   public readonly registerModel = signal({
     email: '',
     password: '',
-    repeatPassword: '',
-    securityQuestion: 0,
-    securityAnswer: ''
+    repeatPassword: ''
   })
 
   public readonly registerForm = form(this.registerModel, (s) => {
@@ -70,45 +61,20 @@ export class RegisterComponent implements OnInit {
       }
       return undefined
     })
-    required(s.securityQuestion)
-    validate(s.securityQuestion, ({ value }) => {
-      if (!value()) {
-        return { kind: 'required' }
-      }
-      return undefined
-    })
-    required(s.securityAnswer)
   })
 
-  public securityQuestions = signal<SecurityQuestion[]>([])
   public error = signal<string | null>(null)
-
-  ngOnInit (): void {
-    this.securityQuestionService.find(null).subscribe({
-      next: (securityQuestions: SecurityQuestion[]) => {
-        this.securityQuestions.set(securityQuestions ?? [])
-      },
-      error: (err) => { console.log(err) }
-    })
-  }
 
   save () {
     return submit(this.registerForm, async () => {
       const user = {
         email: this.registerModel().email,
         password: this.registerModel().password,
-        passwordRepeat: this.registerModel().repeatPassword,
-        securityQuestion: this.securityQuestions().find((question) => question.id === this.registerModel().securityQuestion),
-        securityAnswer: this.registerModel().securityAnswer
+        passwordRepeat: this.registerModel().repeatPassword
       }
 
       try {
-        const response: any = await firstValueFrom(this.userService.save(user))
-        await firstValueFrom(this.securityAnswerService.save({
-          UserId: response.id,
-          answer: this.registerModel().securityAnswer,
-          SecurityQuestionId: this.registerModel().securityQuestion
-        }))
+        await firstValueFrom(this.userService.save(user))
         await this.router.navigate(['/login'])
         this.snackBarHelperService.open('CONFIRM_REGISTER')
       } catch (err: any) {

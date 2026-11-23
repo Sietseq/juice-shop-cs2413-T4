@@ -63,7 +63,7 @@ async function issuePasskeySession (user: UserModel, res: Response) {
   const plainUser = utils.queryResultToJson(user).data
   const [basket] = await BasketModel.findOrCreate({ where: { UserId: user.id } })
   const authenticatedUser = { data: plainUser, bid: basket.id }
-  const token = security.authorize(authenticatedUser)
+  const token = await security.authorizeForUser(user, authenticatedUser)
   security.authenticatedUsers.put(token, authenticatedUser)
   res.json({ authentication: { token, bid: basket.id, umail: user.email } })
 }
