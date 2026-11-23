@@ -639,9 +639,9 @@ function configureApp (app: ReturnType<typeof express>, seq: typeof sequelize) {
   skipSuccessfulRequests: true,
   message: { error: 'Too many login attempts. Try again later.' }
   })
-app.use('/rest/user/login', loginLimiter)
+  app.use('/rest/user/login', loginLimiter)
   app.post('/rest/user/login', login())
-  app.get('/rest/user/change-password', utils.asyncHandler(changePassword()))
+  app.get('/rest/user/change-password', security.isAuthorized(), utils.asyncHandler(changePassword()))
   app.post('/rest/user/request-password-reset', utils.asyncHandler(requestPasswordReset()))
   app.post('/rest/user/reset-password', utils.asyncHandler(resetPassword()))
   app.get('/rest/user/whoami', utils.asyncHandler(retrieveLoggedInUser()))
