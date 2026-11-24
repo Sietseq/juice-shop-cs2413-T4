@@ -196,6 +196,10 @@ export const appendUserId = () => {
 }
 
 export const updateAuthenticatedUsers = () => utils.asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  if (req.method === 'POST' && /^\/rest\/(?:user\/(?:login|request-password-reset|reset-password)|2fa\/verify|passkey\/login-(?:options|verify))\/?$/i.test(req.path)) {
+    next()
+    return
+  }
   const tokens = [utils.jwtFrom(req), req.cookies.token].filter((token): token is string => typeof token === 'string' && token.length > 0)
   for (const token of new Set(tokens)) {
     const user = await readUserToken(token)

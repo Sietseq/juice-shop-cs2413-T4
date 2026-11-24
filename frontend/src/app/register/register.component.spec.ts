@@ -112,7 +112,7 @@ describe('RegisterComponent', () => {
         expect(component.registerForm.password().valid()).toBe(true)
     })
 
-    it('password should not be more than 20 characters', () => {
+    it('password should not be more than 40 characters', () => {
         let password = ''
         for (let i = 0; i < 41; i++) {
             password += 'a'
@@ -138,61 +138,42 @@ describe('RegisterComponent', () => {
         expect(component.registerForm.repeatPassword().valid()).toBe(true)
     })
 
-    it('should be compulsory to select a security question', () => {
-        component.registerModel.update((model) => ({ ...model, securityQuestion: 0 }))
-        expect(component.registerForm.securityQuestion().valid()).toBeFalsy()
-        component.registerModel.update((model) => ({ ...model, securityQuestion: 1 }))
-        expect(component.registerForm.securityQuestion().valid()).toBe(true)
-    })
-
-    it('should be compulsory to provide a security answer', () => {
-        component.registerModel.update((model) => ({ ...model, securityAnswer: '' }))
-        expect(component.registerForm.securityAnswer().valid()).toBeFalsy()
-        component.registerModel.update((model) => ({ ...model, securityAnswer: 'Answer' }))
-        expect(component.registerForm.securityAnswer().valid()).toBe(true)
+    it('should allow registration without security questions or answers', () => {
+        component.registerModel.set({ email: 'x@x.xx', password: 'password', repeatPassword: 'password' })
+        expect(component.registerForm().valid()).toBe(true)
+        expect(securityQuestionService.find).not.toHaveBeenCalled()
+        expect(securityAnswerService.save).not.toHaveBeenCalled()
     })
 
     it('redirects to login page after user registration', async () => {
         userService.save.mockReturnValue(of({ id: 1, question: 'Wat is?' }))
         securityAnswerService.save.mockReturnValue(of({}))
-        component.securityQuestions.set([{ id: 1, question: 'Wat is?' }])
         component.registerModel.update((model) => ({
             ...model,
             email: 'x@x.xx',
             password: 'password',
-            repeatPassword: 'password',
-            securityQuestion: 1,
-            securityAnswer: 'Answer'
+            repeatPassword: 'password'
         }))
-        const user = { email: 'x@x.xx', password: 'password', passwordRepeat: 'password', securityQuestion: { id: 1, question: 'Wat is?' }, securityAnswer: 'Answer' }
-        const securityAnswerObject = { UserId: 1, answer: 'Answer', SecurityQuestionId: 1 }
+        const user = { email: 'x@x.xx', password: 'password', passwordRepeat: 'password' }
         await component.save()
         await fixture.whenStable()
         expect(vi.mocked(userService.save).mock.calls[0][0]).toEqual(user)
-        expect(vi.mocked(securityAnswerService.save).mock.calls[0][0]).toEqual(securityAnswerObject)
+        expect(securityAnswerService.save).not.toHaveBeenCalled()
         expect(location.path()).toBe('/login')
         fixture.destroy()
     })
 
-    it('loading secret questions', () => {
-        securityQuestionService.find.mockReturnValue(of([{ id: 1, question: 'WTF?' }, { id: 2, question: 'WAT?' }]))
-        component.ngOnInit()
-        expect(component.securityQuestions().length).toBe(2)
-        expect(component.securityQuestions()[0].question).toBe('WTF?')
-        expect(component.securityQuestions()[1].question).toBe('WAT?')
-    })
-
-    it('should hold nothing when no secret questions exists', () => {
-        securityQuestionService.find.mockReturnValue(of(undefined))
-        component.ngOnInit()
-        expect(component.securityQuestions()).toEqual([])
-    })
-
-    it('should log error from backend API on failing to get security questions', () => {
-        securityQuestionService.find.mockReturnValue(throwError('Error'))
-        console.log = vi.fn()
-        component.ngOnInit()
-        expect(console.log).toHaveBeenCalledWith('Error')
+    it('should display validation errors returned by registration', async () => {
+        component.registerModel.set({ email: 'x@x.xx', password: 'password', repeatPassword: 'password' })
+        userService.save.mockReturnValue(throwError(() => ({ error: { errors: [{ message: 'email already exists' }] } })))
+        const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+        try {
+            await component.save()
+            expect(component.error()).toBe('Email already exists')
+            expect(location.path()).not.toBe('/login')
+        } finally {
+            log.mockRestore()
+        }
     })
 
     it('should log error on saving user', async () => {
@@ -202,9 +183,7 @@ describe('RegisterComponent', () => {
             ...model,
             email: 'x@x.xx',
             password: 'password',
-            repeatPassword: 'password',
-            securityQuestion: 1,
-            securityAnswer: 'Answer'
+            repeatPassword: 'password'
         }))
         await component.save()
         expect(console.log).toHaveBeenCalledWith('Error')
@@ -217,7 +196,7 @@ describe('RegisterComponent', () => {
             expect(compiled.querySelector('input#emailControl')).toBeTruthy()
             expect(compiled.querySelector('input#passwordControl')).toBeTruthy()
             expect(compiled.querySelector('input#repeatPasswordControl')).toBeTruthy()
-            expect(compiled.querySelector('input#securityAnswerControl')).toBeTruthy()
+            expect(compiled.querySelector('input#securityAnswerControl')).toBeNull()
         })
 
         it('should render the register button as disabled while the form is invalid', () => {

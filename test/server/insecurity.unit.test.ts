@@ -336,6 +336,50 @@ void describe('insecurity', () => {
       assert.ok(nextCalled)
     })
 
+    for (const path of [
+      '/rest/user/login',
+      '/rest/user/request-password-reset',
+      '/rest/user/reset-password',
+      '/rest/2fa/verify',
+      '/rest/passkey/login-options',
+      '/rest/passkey/login-verify',
+      '/REST/USER/LOGIN/'
+    ]) {
+      void it('allows reauthentication with a stale token on POST ' + path, async () => {
+        const req = { method: 'POST', path, cookies: { token: 'unknown' }, headers: { authorization: 'Bearer unknown' } } as any
+        await new Promise<void>((resolve, reject) => {
+          security.updateAuthenticatedUsers()(req, {} as any, (error?: any) => {
+            if (error) reject(error)
+            else resolve()
+          })
+        })
+      })
+    }
+
+    for (const [method, path] of [
+      ['GET', '/rest/user/change-password'],
+      ['GET', '/rest/2fa/status'],
+      ['POST', '/rest/passkey/register-verify'],
+      ['GET', '/rest/user/login'],
+      ['POST', '/rest/user/login/extra']
+    ]) {
+      void it('rejects a stale token on ' + method + ' ' + path, async () => {
+        const req = { method, path, cookies: {}, headers: { authorization: 'Bearer unknown' } } as any
+        let statusSet = 0
+        await new Promise<void>((resolve, reject) => {
+          const res = {
+            clearCookie: () => {},
+            status: (status: number) => { statusSet = status; return res },
+            send: resolve
+          } as any
+          security.updateAuthenticatedUsers()(req, res, (error?: any) => {
+            reject(error ?? new Error('A stale token must not authorize this request'))
+          })
+        })
+        assert.equal(statusSet, 401)
+      })
+    }
+
     void it('isAuthorized returns a middleware', () => {
       assert.equal(typeof security.isAuthorized(), 'function')
     })

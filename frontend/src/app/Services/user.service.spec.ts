@@ -140,11 +140,24 @@ describe('UserService', () => {
         service.resetPassword(mockObject).subscribe((data) => (res = data))
 
         const req = httpMock.expectOne('http://localhost:3000/rest/user/reset-password')
-        req.flush({ user: 'apiResponse' })
+        req.flush({ message: 'apiResponse' })
 
         expect(req.request.method).toBe('POST')
         expect(req.request.body).toEqual(mockObject)
         expect(res).toBe('apiResponse')
+        httpMock.verify()
+    })
+
+    it('should request a password reset code by email', () => {
+        const service = TestBed.inject(UserService)
+        const httpMock = TestBed.inject(HttpTestingController)
+        let response: any
+        service.requestPasswordReset('user@example.test').subscribe((data) => (response = data))
+        const req = httpMock.expectOne('http://localhost:3000/rest/user/request-password-reset')
+        expect(req.request.method).toBe('POST')
+        expect(req.request.body).toEqual({ email: 'user@example.test' })
+        req.flush({ message: 'Check your email.' })
+        expect(response.message).toBe('Check your email.')
         httpMock.verify()
     })
 
