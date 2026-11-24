@@ -437,6 +437,25 @@ function configureApp (app: ReturnType<typeof express>, seq: typeof sequelize) {
   app.post('/api/Feedbacks', verify.captchaBypassChallenge())
   /* User registration challenge verifications before finale takes over */
   app.post('/api/Users', (req: Request, res: Response, next: NextFunction) => {
+    const password = req.body.password
+    if (
+      typeof password !== 'string' ||
+      password.trim().length < 8 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[!-/:-@[-`{-~]/.test(password)
+    ) {
+      res.status(400).json({
+        errors: [{
+          message: 'Password must contain at least 8 characters, uppercase and lowercase letters, a digit, and a symbol.'
+        }]
+      })
+      return
+    }
+    next()
+  })
+  app.post('/api/Users', (req: Request, res: Response, next: NextFunction) => {
     if (req.body.email !== undefined && req.body.password !== undefined && req.body.passwordRepeat !== undefined) {
       if (req.body.email.length !== 0 && req.body.password.length !== 0) {
         req.body.email = req.body.email.trim()
