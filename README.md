@@ -37,22 +37,37 @@ For a detailed introduction, full list of features and architecture overview ple
 
 ## Table of contents
 
+- [Security fixes applied](#security-fixes-applied)
 - [Setup](#setup)
-    - [From Sources](#from-sources)
-    - [Packaged Distributions](#packaged-distributions)
-    - [Docker Container](#docker-container)
-    - [Vagrant](#vagrant)
+  - [From Sources](#from-sources)
+  - [Course Project: Local Mailbox and Password Recovery](#course-project-local-mailbox-and-password-recovery)
+  - [Packaged Distributions](#packaged-distributions)
+  - [Docker Container](#docker-container)
+  - [Vagrant](#vagrant)
 - [Demo](#demo)
 - [Documentation](#documentation)
-    - [Node.js version compatibility](#nodejs-version-compatibility)
-    - [Troubleshooting](#troubleshooting)
-    - [Official companion guide](#official-companion-guide)
+  - [Node.js version compatibility](#nodejs-version-compatibility)
+  - [Troubleshooting](#troubleshooting)
+  - [Official companion guide](#official-companion-guide)
 - [Contributing](#contributing)
 - [References](#references)
 - [Merchandise](#merchandise)
 - [Donations](#donations)
 - [Contributors](#contributors)
 - [Licensing](#licensing)
+
+## Security fixes applied
+
+- Login uses bound SQL parameters to prevent SQL injection.
+- Login is limited to five failed attempts per IP within five minutes.
+- Proxy trust is disabled to prevent forwarded headers from controlling the client IP.
+- Admin, support, and cloud-admin passwords use environment variables or randomly
+  generated values. The testing admin account has been removed.
+- Password changes require authentication and the correct current password.
+- Password recovery uses emailed, eight-digit codes with a ten-minute expiry,
+  single-use enforcement, and request and verification attempt limits.
+- Password recovery invalidates existing sessions. Stale browser tokens do not
+  prevent users from signing in again.
 
 ## Setup
 
@@ -76,6 +91,88 @@ For a detailed introduction, full list of features and architecture overview ple
 5. Run `npm start`
 6. Browse to <http://localhost:3000>
 
+### Course Project: Local Mailbox and Password Recovery
+
+Use this course repository for the fixes described here. Run the application
+commands below from its root folder. Use Node.js 24 LTS and install dependencies
+with `npm install`. After pulling source changes, run `npm run build` before
+`npm start` so the application uses the latest compiled code.
+
+#### 1. Start Mailpit in a separate terminal
+
+[Mailpit](https://mailpit.axllent.org/) captures the application's email locally.
+Follow the [official installation guide](https://mailpit.axllent.org/docs/install/)
+for your operating system.
+
+**Windows (PowerShell):** Download and extract the Windows archive from the
+[Mailpit releases](https://github.com/axllent/mailpit/releases), open PowerShell
+in the extracted folder, and run:
+
+```powershell
+.\mailpit.exe --listen 127.0.0.1:8025 --smtp 127.0.0.1:1025
+```
+
+**Linux:** Download the Linux archive matching your architecture (`amd64` for
+x86-64 or `arm64` for ARM64) from the releases page. Extract it, open a terminal
+in the extracted folder, and run:
+
+```bash
+./mailpit --listen 127.0.0.1:8025 --smtp 127.0.0.1:1025
+```
+
+**macOS:** Install Mailpit with Homebrew and start it:
+
+```bash
+brew install mailpit
+mailpit --listen 127.0.0.1:8025 --smtp 127.0.0.1:1025
+```
+
+Keep Mailpit running. Its web inbox is at <http://127.0.0.1:8025> and its SMTP
+server listens on `127.0.0.1:1025`. No mailbox account or SMTP login is needed.
+
+#### 2. Configure and start Juice Shop in another terminal
+
+**Windows (PowerShell):**
+
+```powershell
+$env:SMTP_HOST = '127.0.0.1'
+$env:SMTP_PORT = '1025'
+$env:SMTP_FROM = 'no-reply@juice-shop.local'
+$env:PASSWORD_RESET_HMAC_KEY = node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+Remove-Item Env:SMTP_USER, Env:SMTP_PASSWORD -ErrorAction SilentlyContinue
+npm start
+```
+
+**Linux and macOS (Bash or Zsh):**
+
+```bash
+export SMTP_HOST='127.0.0.1'
+export SMTP_PORT='1025'
+export SMTP_FROM='no-reply@juice-shop.local'
+export PASSWORD_RESET_HMAC_KEY="$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")"
+unset SMTP_USER SMTP_PASSWORD
+npm start
+```
+
+These environment variables apply to the current terminal and processes started
+from it. Set them again when starting from a new terminal. Keep the generated
+HMAC key private.
+
+#### 3. Try password recovery
+
+1. Open <http://localhost:3000> and register a test account, for example
+   `student@example.test`.
+2. On the login page, choose **Forgot your password?**, enter the registered
+   email address, and select **Send code**.
+3. Open <http://127.0.0.1:8025> and read the password reset email.
+4. Enter its eight-digit code and a new password in Juice Shop. Codes expire
+   after ten minutes and can only be used once.
+5. Sign in with the new password. Existing sessions are invalidated by the reset.
+
+Mailpit captures messages for test addresses in its local inbox instead of
+delivering them to a real email account. Stop Juice Shop and Mailpit with
+`Ctrl+C` in their respective terminals when finished.
+
 ### Packaged Distributions
 
 [![GitHub release](https://img.shields.io/github/downloads/juice-shop/juice-shop/total.svg)](https://github.com/juice-shop/juice-shop/releases/latest)
@@ -98,10 +195,8 @@ For a detailed introduction, full list of features and architecture overview ple
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/bkimminich/juice-shop.svg)](https://hub.docker.com/r/bkimminich/juice-shop)
 ![Docker Stars](https://img.shields.io/docker/stars/bkimminich/juice-shop.svg)
-[![](https://images.microbadger.com/badges/image/bkimminich/juice-shop.svg)](https://microbadger.com/images/bkimminich/juice-shop
-"Get your own image badge on microbadger.com")
-[![](https://images.microbadger.com/badges/version/bkimminich/juice-shop.svg)](https://microbadger.com/images/bkimminich/juice-shop
-"Get your own version badge on microbadger.com")
+[![](https://images.microbadger.com/badges/image/bkimminich/juice-shop.svg)](https://microbadger.com/images/bkimminich/juice-shop "Get your own image badge on microbadger.com")
+[![](https://images.microbadger.com/badges/version/bkimminich/juice-shop.svg)](https://microbadger.com/images/bkimminich/juice-shop "Get your own version badge on microbadger.com")
 
 1. Install [Docker](https://www.docker.com)
 2. Run `docker pull bkimminich/juice-shop`
@@ -124,8 +219,8 @@ For a detailed introduction, full list of features and architecture overview ple
 Feel free to have a look at the latest version of OWASP Juice Shop:
 <http://demo.owasp-juice.shop>
 
-> This is a deployment-test and sneak-peek instance only! You are __not
-> supposed__ to use this instance for your own hacking endeavours! No
+> This is a deployment-test and sneak-peek instance only! You are **not
+> supposed** to use this instance for your own hacking endeavours! No
 > guaranteed uptime! Guaranteed stern looks if you break it!
 
 ## Documentation
@@ -141,7 +236,7 @@ OWASP Juice Shop officially supports the following versions of
 offered accordingly.
 
 | node.js | Supported              | Tested             | [Packaged Distributions](#packaged-distributions) | [Docker images](#docker-container) from `master` | [Docker images](#docker-container) from `develop` |
-|:--------|:-----------------------|:-------------------|:--------------------------------------------------|:-------------------------------------------------|:--------------------------------------------------|
+| :------ | :--------------------- | :----------------- | :------------------------------------------------ | :----------------------------------------------- | :------------------------------------------------ |
 | 26.x    | :heavy_check_mark:     | :heavy_check_mark: |                                                   |                                                  |                                                   |
 | 25.x    | ( :heavy_check_mark: ) | :x:                |                                                   |                                                  |                                                   |
 | 24.x    | :heavy_check_mark:     | :heavy_check_mark: | Windows (`x64`), MacOS (`x64`), Linux (`x64`)     | `latest` (`linux/amd64`, `linux/arm64`)          | `snapshot` (`linux/amd64`, `linux/arm64`)         |
@@ -157,7 +252,7 @@ Please make sure you stay up to date with your chosen version.
 
 [![Gitter](http://img.shields.io/badge/gitter-join%20chat-1dce73.svg)](https://gitter.im/bkimminich/juice-shop)
 
-If you need help with the application setup please check 
+If you need help with the application setup please check
 [our existing _Troubleshooting_](https://pwning.owasp-juice.shop/companion-guide/latest/part4/troubleshooting.html)
 guide. If this does not solve your issue please post your specific problem or question in the
 [Gitter Chat](https://gitter.im/bkimminich/juice-shop) where community members can best try to help you.
@@ -206,10 +301,10 @@ Add it to our ever-growing list of [REFERENCES.md](REFERENCES.md) by forking and
 
 ## Merchandise
 
-* On [Spreadshirt.com](http://shop.spreadshirt.com/juiceshop) and
+- On [Spreadshirt.com](http://shop.spreadshirt.com/juiceshop) and
   [Spreadshirt.de](http://shop.spreadshirt.de/juiceshop) you can get some swag (Shirts, Hoodies, Mugs) with the official
   OWASP Juice Shop logo
-* On
+- On
   [StickerYou.com](https://www.stickeryou.com/products/owasp-juice-shop/794)
   you can get variants of the OWASP Juice Shop logo as single stickers to decorate your laptop with. They can also print
   magnets, iron-ons, sticker sheets and temporary tattoos.
